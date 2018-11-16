@@ -60,6 +60,7 @@ void MainTask(void *pData)
     powerLedTaskHandle  = OS_CreateTask(powerLedTask,  NULL, NULL, POWER_LED_TASK_STACK_SIZE,   POWER_LED_TASK_PRIORITY,   OS_CREATE_SUSPENDED , 0, POWER_LED_TASK_NAME);
     fifthTaskHandle  = OS_CreateTask(powerManagementTask,NULL, NULL, POWER_MANAGEMENT_TASK_STACK_SIZE, POWER_MANAGEMENT_TASK_PRIORITY, 0, 0, POWER_MANAGEMENT_TASK_NAME);
 
+    
     while(1)
     {
         if(OS_WaitEvent(mainTaskHandle, (void**)&event, OS_TIME_OUT_WAIT_FOREVER))
