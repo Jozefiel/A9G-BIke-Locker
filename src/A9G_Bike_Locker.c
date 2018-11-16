@@ -8,46 +8,14 @@
 #define BUTTON_TASK_PRIORITY      1
 #define BUTTON_TASK_NAME         "BUTTON Task"
 
-#define LED_TASK_STACK_SIZE    (1024 * 2)
-#define LED_TASK_PRIORITY      1
-#define LED_TASK_NAME         "LED Task"
-
 #define POWER_MANAGEMENT_TASK_STACK_SIZE (1024 * 2)
 #define POWER_MANAGEMENT_TASK_PRIORITY 2
 #define POWER_MANAGEMENT_TASK_NAME "POWER MANAGEMENT Task"
 
-
 static HANDLE mainTaskHandle = NULL;
-static HANDLE secondTaskHandle = NULL;
-static HANDLE thirtTaskHandle = NULL;
+static HANDLE signalLedTaskHandle = NULL;
+static HANDLE powerLedTaskHandle = NULL;
 static HANDLE fifthTaskHandle = NULL;
-
-
-
-void ledTask()
-{
-
-  GPIO_Init(gpioLedBlue);
-  GPIO_Init(gpioLedGreen);
-
-  GPIO_SetLevel(gpioLedBlue,ledBlueLevel); //Set level
-  GPIO_SetLevel(gpioLedGreen,ledGreenLevel); //Set level
-
-  while(1)
-  {
-    ledBlueLevel   = (ledBlueLevel==GPIO_LEVEL_HIGH)?GPIO_LEVEL_LOW:GPIO_LEVEL_HIGH;
-    ledGreenLevel  = (ledGreenLevel==GPIO_LEVEL_HIGH)?GPIO_LEVEL_LOW:GPIO_LEVEL_HIGH;
-    GPIO_SetLevel(gpioLedBlue,ledBlueLevel);
-    GPIO_SetLevel(gpioLedGreen,ledGreenLevel);
-    OS_Sleep(blue_led_pwm_high_intensity);
-    ledBlueLevel   = (ledBlueLevel==GPIO_LEVEL_HIGH)?GPIO_LEVEL_LOW:GPIO_LEVEL_HIGH;
-    ledGreenLevel  = (ledGreenLevel==GPIO_LEVEL_HIGH)?GPIO_LEVEL_LOW:GPIO_LEVEL_HIGH;
-    GPIO_SetLevel(gpioLedBlue,ledBlueLevel);
-    GPIO_SetLevel(gpioLedGreen,ledGreenLevel);
-
-    OS_Sleep(pwm_led_period-blue_led_pwm_high_intensity);
-  }
-}
 
 void buttonTask()
 {
@@ -55,9 +23,9 @@ void buttonTask()
   {
     Trace(1,"Nwm co BUTTON");
     OS_Sleep(500);
-    blue_led_pwm_high_intensity++;
-    if(blue_led_pwm_high_intensity>20)
-      blue_led_pwm_high_intensity=0;//Sleep 500 ms
+    POWER_LED_DUTY_CYCLE++;
+    if(POWER_LED_DUTY_CYCLE>20)
+      POWER_LED_DUTY_CYCLE=0;//Sleep 500 ms
   }
 }
 
@@ -68,7 +36,10 @@ void powerManagementTask()
   {
     uint16_t voltage = PM_Voltage(&percent);
     Trace(1,"voltage:%dmV,%d percent last,times count:%d",voltage,percent);
-    OS_Sleep(500);                                  //Sleep 500 ms
+    OS_StartTask(signalLedTaskHandle,NULL);
+    OS_Sleep(3000);
+    OS_StopTask(signalLedTaskHandle);
+    OS_Sleep(3000);                                             //Sleep 500 ms
   }
 }
 
@@ -81,13 +52,12 @@ void EventDispatch(API_Event_t* pEvent)
     }
 }
 
-
 void MainTask(void *pData)
 {
     API_Event_t* event=NULL;
 
-    secondTaskHandle = OS_CreateTask(buttonTask,NULL, NULL, BUTTON_TASK_STACK_SIZE, BUTTON_TASK_PRIORITY, 0, 0, BUTTON_TASK_NAME);
-    thirtTaskHandle  = OS_CreateTask(ledTask,NULL, NULL, LED_TASK_STACK_SIZE, LED_TASK_PRIORITY, 0, 0, LED_TASK_NAME);
+    signalLedTaskHandle = OS_CreateTask(signalLedTask, NULL, NULL, SIGNAL_LED_TASK_STACK_SIZE,  SIGNAL_LED_TASK_PRIORITY,  OS_CREATE_SUSPENDED , 0, SIGNAL_LED_TASK_NAME);
+    powerLedTaskHandle  = OS_CreateTask(powerLedTask,  NULL, NULL, POWER_LED_TASK_STACK_SIZE,   POWER_LED_TASK_PRIORITY,   OS_CREATE_SUSPENDED , 0, POWER_LED_TASK_NAME);
     fifthTaskHandle  = OS_CreateTask(powerManagementTask,NULL, NULL, POWER_MANAGEMENT_TASK_STACK_SIZE, POWER_MANAGEMENT_TASK_PRIORITY, 0, 0, POWER_MANAGEMENT_TASK_NAME);
 
     while(1)
